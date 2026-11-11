@@ -1,28 +1,4 @@
-// An mrepo's prerequisites (docs/design/packages.md, "Prerequisites"):
-// declared with their conditions in its package's config, checked when it
-// is deployed, before anything is written; a fix only with a yes.
-//   check(list, ctx)  list: [{ check, when?, fix?, ... }]; ctx: { work,
-//                     sources, bare: { version, integrity }, path?, yes,
-//                     ask }.
-//                     Each in order: { check, ok, value | missing, fixed?,
-//                     skipped? }; stops at the first that fails and is not
-//                     fixed. Resolves { ok, results }.
-// The checks:
-//   platform   { platforms: ['linux-x64'] }   this machine's
-//   work       the work folder writable, not the filesystem's root, no other mrepo there ({ name }: the
-//              one this deploys may be there already)
-//   sources    each reachable: a folder there; github: its host answering
-//   bare       the Bare recorded in <work>/bare.json, else the pinned one at
-//              <work>/bare/bin/bare, else one installed (ctx.path, a PATH:
-//              the first `bare` there at the pinned major, the same version
-//              or newer; npm's wrapper asked for the binary it runs),
-//              recorded; fix: the pinned one put in place from the sources
-//              (folder: <path>/holepunchto/<tarball>, by its organisation;
-//              github: npm's registry), checked against its sha512
-//   docker     Docker Engine installed, running, rootful, native, the user in
-//              its group
-// Conditions (`when`): 'not-in-container' (no /.dockerenv, no container
-// runtime in /proc/1/cgroup).
+// check(list, ctx): an mrepo's prerequisites checked, a fix only with a yes (README.md beside it).
 import { existsSync, readFileSync, writeFileSync, mkdirSync, accessSync, rmSync, renameSync, chmodSync, constants } from 'bare-fs'
 import { join, dirname, resolve } from 'bare-path'
 import os from 'bare-os'
@@ -30,21 +6,13 @@ import crypto from 'bare-crypto'
 import zlib from 'bare-zlib'
 import https from 'bare-https'
 import { spawnSync } from 'bare-subprocess'
+import { inContainer } from '../in-container/index.js'
+import { acceptable } from '../acceptable/index.js'
+import { placed, recordOf } from '../bare-of/index.js'
 
-export const inContainer = () => existsSync('/.dockerenv') ||
-  (() => { try { return /docker|containerd|kubepods|libpod|lxc/.test(readFileSync('/proc/1/cgroup', 'utf8')) } catch { return false } })()
 
 const WHEN = { 'not-in-container': () => !inContainer() }
 
-// Sources: 'github:<org>' or 'folder:<path>'.
-export function parseSource (s) {
-  const i = s.indexOf(':')
-  const kind = i < 0 ? s : s.slice(0, i)
-  const at = i < 0 ? '' : s.slice(i + 1)
-  if (kind === 'folder') return { kind, path: at }
-  if (kind === 'github') return { kind, org: at || 'haiccing' }
-  throw new Error(`not a source: ${s} (folder:<path>, github:<org>)`)
-}
 
 const get = (host, path) => new Promise((resolve, reject) => {
   const req = https.request({ host, path, method: 'GET' }, res => {
@@ -99,22 +67,7 @@ async function fetchBare (sources, version) {
   return null
 }
 
-// The Bare an mrepo runs on, recorded in <work>/bare.json ({ bare, version,
-// installed }): one installed on the machine, or the pinned one put in place
-// at <work>/bare/bin/bare (also without a record, as before there was one).
-const placed = work => join(work, 'bare', 'bin', 'bare')
-const recordOf = work => { try { return JSON.parse(readFileSync(join(work, 'bare.json'), 'utf8')) } catch { return null } }
 const remember = (work, r) => { mkdirSync(work, { recursive: true }); writeFileSync(join(work, 'bare.json'), JSON.stringify(r, null, 2) + '\n'); return r }
-export const bareOf = work => recordOf(work)?.bare ?? placed(work)
-
-// An installed Bare is accepted at the pinned version's major, the same or
-// newer (the human, 2026-11-11): only its version can be asked, no sha512.
-export function acceptable (have, want) {
-  const [a, b] = [have, want].map(v => String(v).replace(/^v/, '').split('.').map(Number))
-  if (a.length < 3 || a.some(Number.isNaN) || a[0] !== b[0]) return false
-  for (let i = 1; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i]
-  return true
-}
 const versionOf = b => {
   const r = run(b, ['--version'])
   return r.status === 0 ? r.stdout.toString().trim().replace(/^v/, '') : null

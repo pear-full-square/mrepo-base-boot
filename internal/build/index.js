@@ -1,21 +1,4 @@
-// An mrepo built from its structure (docs/design/packages.md, "Installing an
-// mrepo from its structure"): a folder laid out by layers, a layer.json at
-// each leaf, written as a standalone repository on disk, p2p-git's hybrid
-// with every layer on the filesystem (the setting's `filesystem` storage).
-//   build({ from, work, name, dir, time })  from: the mrepo/ folder; the repository
-//                                     (dir: written there instead, a child
-//                                     inside its parent; no setting written)
-//                                     written at <work>/mrepos/<name>/.git, one
-//                                     layer per leaf (an orphan branch, its
-//                                     files as one commit, layer.json with
-//                                     them), the inbox's and the outbox's files
-//                                     also their working folders (<view>/inbox,
-//                                     <view>/outbox);
-//                                     <work>/mrepo.json written (setting: false,
-//                                     not: a child's, the folder its parent's). time (seconds):
-//                                     every commit's, so the same folder builds
-//                                     the same repository. Resolves
-//                                     { name, layers: { layer: commit } }.
+// build({ from, work, name, dir, time, setting }): an mrepo built from its structure (README.md beside it).
 import fs, { readdirSync, readFileSync, statSync, existsSync, mkdirSync, writeFileSync, copyFileSync } from 'bare-fs'
 import { join } from 'bare-path'
 import { p2pgitBackend, writer } from 'mycelium-git'
