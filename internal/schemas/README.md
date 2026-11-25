@@ -4,7 +4,7 @@ Registers the schemas a package carries in the install's registry, from its bund
 
 A package carries its schemas sealed in its bundle: its own in
 `schemas/`, each of its modules' in `modules/<org>/<module>/schemas/`
-(`haiccing/base-docs-package`, "Schemas"). Deploying registers them: the
+(`haiccing/base-docs-avro`, "In a package"). Deploying registers them: the
 creator registers, `place` for every package it puts in place. The
 registry is an index, not a gatekeeper (`mycelium-value-avro`): a schema
 registered again is the same entry; a new version, a new fingerprint
