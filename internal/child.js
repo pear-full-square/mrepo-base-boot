@@ -132,7 +132,7 @@ export async function child (exec, segments) {
   }
   const shortcut = async () => (await shortcutsAt(exec, at)).find(l => l.mrepo === mrepo) ?? null
   const exists = async () => (await exec.select(`main/${at}`)).length > 0 && !(await shortcut())
-  exec.log('debug', 'child', { at, mrepo, dir: placed })
+  exec.log('debug', 'child', `The child at ${at}: ${mrepo}, its folder ${placed}.`)
   return {
     name,
     at,

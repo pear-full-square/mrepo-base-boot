@@ -19,9 +19,8 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
   if (was) {
     const asked = args[0] ? targetOf(args[0]) : was.package
     if (asked !== was.package) throw new Error(`deployed already: ${c.at}${was.package ? `, from ${was.package} (not ${asked})` : ''}`)
-    exec.log('warn', 'deployed already', { at: c.at, mrepo: c.mrepo, package: was.package })
-    const { key, uri: _, link: __, at, how, folder, ...rest } = was
-    return { deployed: c.at, mrepo: c.mrepo, ...rest, again: true }
+    exec.log('warn', 'deployed already', `A repeat: ${c.at} is deployed already; nothing done.`)
+    return `${c.at} is deployed already, as ${c.mrepo}, from ${was.package}: nothing done.`
   }
   // a position that exists locally (data in main there): not a target
   await c.refuse()
@@ -63,15 +62,14 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
       const { folder, ...made } = await deployPair(exec, c, { target, sources })
       Object.assign(record, { folder, ...made })
       write()
-      exec.log('info', 'deployed', { at: c.at, mrepo: c.mrepo, package: target, container: made.container.name })
-      return { deployed: c.at, mrepo: c.mrepo, package: target, container: made.container }
+      return `Deployed ${c.at} as ${c.mrepo}, from ${target}, in the container ${made.container.name}.`
     }
     // Built at its place, <work>/mrepos/<unique URI>, the target's list
     // laid in, its packages placed; each package's scripts placed in the
     // install's scripts folder, where the haicc command reads them.
     Object.assign(record, await install(exec, { store, sources, target, dir: c.dir, uri: c.mrepo }))
     if (exec.runtime.work) {
-      const placed = await exec.step('scripts', r => ({ scripts: r }), async () => record.packages.flatMap(pkg => placeScripts({ store, pkg, into: join(exec.runtime.work, SCRIPTS) }).map(n => `${pkg}/${n}`)))
+      const placed = await exec.step('scripts', r => `Its packages' scripts placed in the install's scripts folder: ${r.length}.`, async () => record.packages.flatMap(pkg => placeScripts({ store, pkg, into: join(exec.runtime.work, SCRIPTS) }).map(n => `${pkg}/${n}`)))
       if (placed.length) record.scripts = placed
     }
     write()
@@ -82,21 +80,21 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
     // no runtime.
     const runtime = join(c.dir, 'packages', 'haiccing', 'base-package-runtime.bundle')
     if (existsSync(runtime)) {
-      const s = await exec.step('runtime', r => ({ started: Boolean(r), pid: r?.pid ?? null }), () => start({ repo: c.dir, bundle: runtime }))
+      const s = await exec.step('runtime', r => (r ? `Its runtime started, pid ${r.pid}.` : 'Its runtime did not start.'), () => start({ repo: c.dir, bundle: runtime }))
       if (!s) throw new Error(`its runtime did not start: ${c.dir}`)
       record.runtime = { pid: s.pid }
-      const done = await exec.step('commission', r => ({ state: r?.state ?? null, ...(r?.error ? { error: r.error } : {}) }), () => commissioned({ repo: c.dir }))
+      const done = await exec.step('commission', r => `Its commission waited for: ${r?.state ?? 'its runtime gone'}${r?.error ? `, ${r.error}` : ''}.`, () => commissioned({ repo: c.dir }))
       if (!done || done.state === 'failed') throw new Error(`its commission failed: ${done?.error ?? 'its runtime gone'} (${target}, nothing of it left)`)
       record.commission = done.state
       // its service's state as its commission left it, said with the deploy
       // catch: no service state there: none to say
       record.service = await openRepo(p2pgitBackend(join(c.dir, '.git'), { fs })).read('/runtime/service.json').then(b => JSON.parse(b.toString()).state ?? null, () => null)
-    } else exec.log('verbose', 'no runtime', { package: target })
+    } else exec.log('verbose', 'no runtime', `${target} brings no runtime: none started.`)
     write()
   } catch (err) {
     // Nothing of it left: what it deployed so far decommissioned, as it can
     // be; its runtime stopped; its folder removed; its link out.
-    await exec.step('undone', { dir: c.dir }, async () => {
+    await exec.step('undone', `Nothing of it left: its runtime stopped, ${c.dir} removed, its link out.`, async () => {
       if (!pair) {
         // catch: what is left of it goes, whatever its decommission says
         await decommission({ repo: c.dir }).catch(() => null)
@@ -108,7 +106,14 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
     })
     throw err
   }
-  exec.log('info', 'deployed', { at: c.at, mrepo: c.mrepo, package: target, commission: record.commission ?? null })
-  const { key, at, how, folder, uri: _, ...out } = record
-  return { deployed: c.at, mrepo: c.mrepo, ...out }
+  // What is said: the outcome first, then a fact a line. What is local
+  // about it (its packages, its layers, its runtime's process): its link's
+  // record, in the links layer.
+  return [
+    `Deployed ${c.at} as ${c.mrepo}, from ${target}.`,
+    `${record.packages?.length ?? 0} packages placed.`,
+    record.runtime ? `Its runtime is running, pid ${record.runtime.pid}.` : 'It has no runtime: none started.',
+    ...(record.runtime ? [`Its commission is ${record.commission}.`] : []),
+    ...(record.service ? [`Its service is ${record.service}.`] : [])
+  ].join('\n')
 }

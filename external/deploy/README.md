@@ -46,8 +46,15 @@ package: refused (`boot/redeploy` changes it).
 
 ## Returns
 
-`{ deployed, mrepo, package, packages, layers, scripts, runtime: { pid }, commission, service }` (`scripts`: those placed, `<org>/<package>/<name>`, when any);
-`deployed` is the position as written at `main`; `mrepo` is the child's unique URI.
+What it did, said, the outcome first, a fact a line: `Deployed <position>
+as <unique URI>, from <package>.` (the position as written at `main`);
+`<n> packages placed.`; `Its runtime is running, pid <pid>.` (or `It has
+no runtime: none started.`); `Its commission is <state>.`; `Its service
+is <state>.`, as its commission left it. What is local about it (its
+packages, its layers, its scripts, its runtime's process): its link's
+record, in the links layer (`links/<key>.json`). Deployed already, from
+the same package: `<position> is deployed already, as <unique URI>, from
+<package>: nothing done.`
 
 **Its commission**: the child's runtime, as it starts, runs its
 `commission` hook (`runtime/hooks/commission.haicc`, its package's), and
