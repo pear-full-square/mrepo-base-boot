@@ -29,11 +29,9 @@ routine.
   `exec.runtime.dir`.
 - **Internal methods** are called by code: by the actions, and by the boot
   itself before any runtime runs.
-- **Types are not registered at deploy any more**: a package's types
-  are the schema registry's, mounted from the store by the warm boot
-  (`warm-boot/prepare`). `internal/schemas`, the first build's
-  registration, is kept for `splectral-server` until it is brought to
-  the request; `place` does not call it.
+- **A package's types are not the deploy's**: they are the schema
+  registry's, mounted from the store by the warm boot
+  (`warm-boot/prepare`).
 - **Not yet**: the requirements resolved into packages; what an action does
   outside the repository, such as a runtime started or a folder removed, is
   not undone by a reset.
