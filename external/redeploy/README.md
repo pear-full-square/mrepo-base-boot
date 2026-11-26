@@ -14,7 +14,7 @@ The package deployed is the one given, else the one recorded for the child.
 
 ## Returns
 
-`teardown`'s result and `deploy`'s, merged.
+What `teardown` says, then what `deploy` says, a line after the other.
 
 ## Errors
 

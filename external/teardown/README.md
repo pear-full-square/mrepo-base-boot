@@ -24,11 +24,13 @@ removed (`internal/pair`). It answers `{ tornDown, container }`.
 
 ## Returns
 
-`{ tornDown }`: the position as written at `main`.
+What it did, said: `Torn down <position> (<unique URI>): its runtime
+stopped, pid <pid>, its folder removed, its link out.` (`no runtime of
+it running` where none was; a pair: its container removed).
 
 **Idempotent**: a position with nothing deployed at it (torn down
 already) is allowed: a warning in its log, `not deployed`, nothing done,
-`{ tornDown, again: true }`. A teardown run again, a decommission run
+`<position> is not deployed: nothing torn down.` A teardown run again, a decommission run
 again, are then safe.
 
 The scripts a deploy placed in the work folder's `scripts/` stay: they

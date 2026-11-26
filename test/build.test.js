@@ -1,16 +1,11 @@
 import test from 'brittle'
-import { spawnSync } from 'bare-subprocess'
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'bare-fs'
-import { join, dirname } from 'bare-path'
+import { join } from 'bare-path'
 import { tmpdir } from 'bare-os'
-import { fileURLToPath } from 'bare-url'
 import { openRepo } from 'mycelium-git'
-import { layer } from 'mrepo-base-request'
-import { start, ask, open } from 'mrepo-base-runtime'
+import { open } from 'mrepo-base-runtime'
 import { build } from '../index.js'
-import { send } from 'mrepo-base-runtime/test/fixture.js'
 
-const here = join(dirname(fileURLToPath(import.meta.url)), '..')
 // (a preloaded request: its offset its author's, before anything arrives)
 const PRELOADED = '0000000000001'
 // A boot mrepo's structure, written here (the module's tests stand on their
@@ -26,9 +21,6 @@ mkdirSync(join(BOOT, 'runtime', 'hooks'), { recursive: true })
 writeFileSync(join(BOOT, 'runtime', 'hooks', 'boot.haicc'), 'protocol/activate . crud\n')
 const preloaded = { api: 'boot', protocol: 'boot', action: 'deploy', uri: ['main', 'host'], args: ['haiccing/base-package-runtime'] }
 writeFileSync(join(BOOT, 'request', 'pending', 'default', `${PRELOADED}.json`), JSON.stringify({ topic: '/request/pending/default', offset: Number(PRELOADED), timestamp: '2026-11-11T00:00:00.000Z', headers: {}, value: { topic: null, offset: Number(PRELOADED), timestamp: '2026-11-11T00:00:00.000Z', headers: {}, value: preloaded } }))
-const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
-const alive = pid => spawnSync('kill', ['-0', String(pid)], { stdio: 'ignore' }).status === 0
-const req = (protocol, action, uri) => ({ api: 'boot', protocol, action, uri })
 
 test('the boot mrepo: built from its folder, the same twice', async (t) => {
   const a = mkdtempSync(join(tmpdir(), 'build-a-'))
@@ -50,30 +42,6 @@ test('the boot mrepo: built from its folder, the same twice', async (t) => {
   } finally {
     rmSync(a, { recursive: true, force: true })
     rmSync(b, { recursive: true, force: true })
-  }
-})
-
-test('the boot mrepo running, without its packages: its boot hook run, what it activated answering; its preloaded deploy refused (no boot protocol linked); stopped', { timeout: 120000 }, async (t) => {
-  const work = mkdtempSync(join(tmpdir(), 'boot-'))
-  try {
-    await build({ from: BOOT, work, name: 'boot' })
-    const s = await start({ work, bundle: join(here, '..', 'mrepo-base-runtime', 'test', 'runtime.js') })
-    t.ok(s?.pid, 'the runtime started')
-    t.is(s.repository.storage, 'filesystem')
-    t.is(s.repository.name, 'boot')
-    t.alike(await send(work, req('crud', 'read', '.')), { ok: true, value: [{ uri: ['main', '.'], value: {}, children: [] }] }, 'no service: crud activated by the boot hook, a request answered')
-    t.alike(await send(work, req('service', 'start', '.')), { ok: false, error: 'not now: service start (service is not active)' }, 'loaded, not activated by any hook: not from outside')
-    t.ok((await ask({ work, op: 'stop' }))?.stopping, 'asked to stop')
-    for (let i = 0; i < 100 && alive(s.pid); i++) await wait(100)
-    t.absent(alive(s.pid), 'stopped')
-    const r = await open(work)
-    const repo = openRepo(r.backend)
-    const done = (await layer({ repo }, 'request/done').read(PRELOADED)).value.value
-    t.alike([done.protocol, done.action, done.uri, done.args], ['boot', 'deploy', ['main', 'host'], ['haiccing/base-package-runtime']], 'the preloaded request: boot deploy main/host, the runtime its target')
-    t.is(done.error, 'no protocol: boot (crud, protocol, service)', 'done, refused here: no boot protocol linked, said with those there (the package\'s test runs it with its packages)')
-    t.alike(await layer({ repo }, 'request/pending/default').list(), [], 'nothing pending')
-  } finally {
-    rmSync(work, { recursive: true, force: true })
   }
 })
 

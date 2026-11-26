@@ -3,7 +3,6 @@ import fs from 'bare-fs'
 import { join } from 'bare-path'
 import { p2pgitBackend, writer, openRepo } from 'mycelium-git'
 import { fetch, put } from '../fetch/index.js'
-import { register } from '../schemas/index.js'
 
 const author = { name: 'mrepo-boot', email: 'mrepo-boot@localhost' }
 
@@ -17,9 +16,9 @@ export async function place ({ dir, store, sources, list }) {
     for (const a of entry.addons) put(join(store, 'addons', a), join(mine, 'addons', a))
     packages[pkg] = { sha256: entry.sha256, id: entry.id, entries: entry.entries ?? [], addons: entry.addons }
   }
-  // Their schemas registered in the install's registry: the creator
-  // registers (internal/schemas).
-  const schemas = register({ store, packages: Object.keys(packages) })
+  // (their types: the schema registry's, mounted from the store by the
+  // warm boot, warm-boot/prepare; the first build's registration here is
+  // gone: internal/schemas, splectral-server's until it is brought over)
   // The packages layer: the list and the hashes (not the bytes), the sources
   // used and the store (unchanged: no commit).
   const backend = p2pgitBackend(join(dir, '.git'), { fs })
@@ -32,7 +31,7 @@ export async function place ({ dir, store, sources, list }) {
     await c.put('/manifest.json', now)
     await c.commit(`Packages in place: ${list.join(', ')}`, { author })
   }
-  return { packages, committed, schemas }
+  return { packages, committed }
 }
 
 export const storeOf = work => join(work, 'packages')
