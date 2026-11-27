@@ -8,7 +8,7 @@ The runtime is not started here: that is the caller's.
 
 ## Signature
 
-`install(exec, { store, sources, target, dir, uri, laid, over })`
+`install(exec, { store, sources, target, dir, uri, laid })`
 
 - `store`, `sources`: where the packages come from, as `origin` gives
   them.
@@ -33,8 +33,6 @@ order, and each layer's commit.
 
 ## Errors
 
-- The folder is there already: `in the way`; not with `over`, the
-  caller having taken it over (the deploy's flag `force`): built into
-  it, what it holds kept.
+- The folder is there already: `in the way`.
 - The mrepo's packages manifest names no store.
 - What `lay`, `build` and `place` throw.
