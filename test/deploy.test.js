@@ -10,7 +10,6 @@ import { tmpdir } from 'bare-os'
 import Bundle from 'bare-bundle'
 import { openRepo, writer, p2pgitBackend } from 'mycelium-git'
 import { asked, drop, nameOf, layer, outboxOf } from 'mrepo-base-request'
-import { mountOf } from 'mrepo-base-runtime'
 import { ask } from 'mrepo-base-runtime'
 import { spawn, spawnSync } from 'bare-subprocess'
 import process from 'bare-process'
@@ -19,15 +18,6 @@ import { build, deploy, teardown, redeploy, place, parseSource, lay } from '../i
 const lj = (dir, mode) => { mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, '.layer.json'), JSON.stringify({ mode, description: 'test' })) }
 const sha256 = b => crypto.createHash('sha256').update(b).digest('hex')
 const json = b => JSON.parse(b.toString())
-
-// The schema registry where an install has it: the runtime package's types,
-// from its bundle in the sources, mounted as the warm boot mounts them.
-function mount (work) {
-  const b = Bundle.from(readFileSync(join(SOURCES, 'haiccing', 'base-package-runtime.bundle')))
-  const to = join(mountOf(work), 'haiccing', 'base-package-runtime')
-  mkdirSync(to, { recursive: true })
-  for (const k of Object.keys(b.files).filter(k => /^\/types\/[^/]+\.avsc$/.test(k))) writeFileSync(join(to, k.slice('/types/'.length)), b.read(k))
-}
 
 // A source by organisation holding bundles whose mrepo/ parts are given
 // (and, by a slash-led path, its other files: its scripts).
@@ -299,7 +289,6 @@ test('deploy the runtime: the child\'s runtime started from its own packages, it
     const dir = await parent(work, [parseSource(`folder:${SOURCES}`)])
     const backend = p2pgitBackend(join(dir, '.git'), { fs })
     const { exec, commit } = context(dir, backend, work)
-    mount(work)
     const d = await deploy(exec, { uri: ['main', 'host'], args: ['haiccing/base-package-runtime'] })
     await commit()
     const host = join(work, 'mrepos', 'local', 'host')
@@ -339,7 +328,6 @@ test('commission and decommission: the deploy waits for the child\'s commission,
     })
     const dir = await parent(work, [parseSource(`folder:${pkgs}`), parseSource(`folder:${SOURCES}`)])
     const { exec, commit } = context(dir, p2pgitBackend(join(dir, '.git'), { fs }), work)
-    mount(work)
     const good = await deploy(exec, { uri: ['main', 'good'], args: ['haiccing/good'] })
     await commit()
     t.ok(good.split('\n').includes('Its commission is done.'), 'its commission done before the deploy answers: said')

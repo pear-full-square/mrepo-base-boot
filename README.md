@@ -30,8 +30,9 @@ routine.
 - **Internal methods** are called by code: by the actions, and by the boot
   itself before any runtime runs.
 - **A package's types are not the deploy's**: they are the schema
-  registry's, mounted from the store by the warm boot
-  (`warm-boot/prepare`).
+  registry's, loaded from the store (`avro-registry/load`). The one
+  exception is the runtime package's own structure: the three
+  essential types in its `mrepo/avro/`, laid in as any structure is.
 - **Not yet**: the requirements resolved into packages; what an action does
   outside the repository, such as a runtime started or a folder removed, is
   not undone by a reset.
