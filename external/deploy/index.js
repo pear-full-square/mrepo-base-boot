@@ -1,5 +1,5 @@
 // deploy(exec, { uri, args: [package] }): the boot protocol's deploy (README.md beside it).
-import fs, { existsSync, rmSync } from 'bare-fs'
+import fs, { existsSync, readdirSync, rmSync } from 'bare-fs'
 import { openRepo, p2pgitBackend } from 'mycelium-git'
 import { join } from 'bare-path'
 import { start, stop, commissioned, decommission } from 'mrepo-base-runtime'
@@ -30,7 +30,15 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
   // into a container (the flag: container): its own haicc install there
   // runs it, this mrepo links it (internal/pair)
   const pair = flags.container === true
-  if (!pair && existsSync(c.dir)) throw new Error(`in the way: ${c.dir}`)
+  // A folder there already: in the way; with the flag force, built into
+  // it, what it holds kept (a position prepared for it, taken over); one
+  // that holds an mrepo refused all the same.
+  const there = !pair && existsSync(c.dir)
+  if (there && flags.force !== true) throw new Error(`in the way: ${c.dir} (a folder there already; --flags force builds into it, what it holds kept)`)
+  if (there && existsSync(join(c.dir, '.git'))) throw new Error(`in the way: ${c.dir} (an mrepo there already, linked nowhere here)`)
+  // (what it held before: left as it was when the deploy fails)
+  const held = there ? readdirSync(c.dir) : null
+  if (there) exec.log('info', 'taken over', `Built into the folder there, ${c.dir}; what it holds kept: ${held.join(', ') || 'nothing'}.`)
   if (!args[0]) throw new Error('missing argument: package')
   const target = targetOf(args[0])
   // The store and the sources: the mapping the parent's packages manifest records.
@@ -67,7 +75,7 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
     // Built at its place, <work>/mrepos/<unique URI>, the target's list
     // laid in, its packages placed; each package's scripts placed in the
     // install's scripts folder, where the haicc command reads them.
-    Object.assign(record, await install(exec, { store, sources, target, dir: c.dir, uri: c.mrepo }))
+    Object.assign(record, await install(exec, { store, sources, target, dir: c.dir, uri: c.mrepo, over: there }))
     if (exec.runtime.work) {
       const placed = await exec.step('scripts', r => `Its packages' scripts placed in the install's scripts folder: ${r.length}.`, async () => record.packages.flatMap(pkg => placeScripts({ store, pkg, into: join(exec.runtime.work, SCRIPTS) }).map(n => `${pkg}/${n}`)))
       if (placed.length) record.scripts = placed
@@ -100,7 +108,9 @@ export async function deploy (exec, { uri, args = [], flags = {} }, { link: kept
         await decommission({ repo: c.dir }).catch(() => null)
         // catch: and whatever its stop says
         await stop({ repo: c.dir, pid: record.runtime?.pid ?? null }).catch(() => null)
-        rmSync(c.dir, { recursive: true, force: true })
+        // (taken over: only what the deploy added removed)
+        if (held === null) rmSync(c.dir, { recursive: true, force: true })
+        else for (const n of existsSync(c.dir) ? readdirSync(c.dir) : []) if (!held.includes(n)) rmSync(join(c.dir, n), { recursive: true, force: true })
       }
       await unlink()
     })

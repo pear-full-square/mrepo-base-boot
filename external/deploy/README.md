@@ -125,7 +125,9 @@ nothing of it inside this mrepo's folder.
 - No package: `missing argument: package`.
 - The child is deployed already from another package: `deployed
   already: <position>, from <package>`. Its folder in the way: `in the
-  way`.
+  way`; with the flag `force`, built into the folder there, what it
+  holds kept (said in its log; on a failure only what the deploy added
+  is removed). A folder that holds an mrepo is refused all the same.
 - The position exists locally, as data in `main`: the boot protocol
   cannot target it.
 - The parent's packages manifest names no store.

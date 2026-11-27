@@ -27,9 +27,10 @@ export async function origin (exec) {
   return { store: mine.store, sources: (mine.sources || []).map(parseSource), packages: Object.keys(mine.packages || {}) }
 }
 
-// (laid: what the caller changes in the structure laid in, before it is built)
-export async function install (exec, { store, sources, target, dir, uri, laid = null }) {
-  if (existsSync(dir)) throw new Error(`in the way: ${dir}`)
+// (laid: what the caller changes in the structure laid in, before it is built;
+// over: built into the folder there, where the caller took it over)
+export async function install (exec, { store, sources, target, dir, uri, laid = null, over = false }) {
+  if (existsSync(dir) && !over) throw new Error(`in the way: ${dir}`)
   // The target's list laid in: each package's mrepo/ part, in that order,
   // runtime config from the last only; built at its own place.
   const tmp = mkdtempSync(join(tmpdir(), 'install-'))

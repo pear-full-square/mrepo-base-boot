@@ -200,6 +200,21 @@ test('deploy from a target package\'s list, linked first, placed by its unique U
     t.absent(await repo.find('/main/registry/.node.json'), 'no registry in main')
     for (const n of ['one', 'two', 'three']) { await teardown(exec, { uri: ['main', n] }); await commit() }
     t.alike(readdirSync(join(work, 'mrepos', 'local')), [], 'torn down: out of the registry')
+    // a folder there already: in the way; with the flag force, built into it, what it holds kept
+    const prepared = join(work, 'mrepos', 'local', 'prepared')
+    mkdirSync(join(prepared, 'avro'), { recursive: true })
+    writeFileSync(join(prepared, 'avro', 'kept.txt'), 'kept')
+    await t.exception(deploy(exec, { uri: ['main', 'prepared'], args: ['haiccing/target'] }), /in the way: .*local\/prepared \(a folder there already; --flags force builds into it, what it holds kept\)/, 'a folder at its place: in the way, said with what takes it over')
+    await t.exception(deploy(exec, { uri: ['main', 'prepared'], args: ['haiccing/none'], flags: { force: true } }), /not in the store nor the sources/, 'forced, and the deploy fails')
+    t.alike([readdirSync(prepared), readFileSync(join(prepared, 'avro', 'kept.txt'), 'utf8'), await repo.find('/main/prepared/.shortcuts.json')], [['avro'], 'kept', null], 'the folder left as it was found: only what the deploy added removed, its link out')
+    exec.entries = []
+    t.is((await deploy(exec, { uri: ['main', 'prepared'], args: ['haiccing/target'], flags: { force: true } })).split('\n')[0], 'Deployed prepared as local/prepared, from haiccing/target.', 'forced: built into it, the position taken over')
+    await commit()
+    t.alike([existsSync(join(prepared, '.git')), readFileSync(join(prepared, 'avro', 'kept.txt'), 'utf8'), exec.entries.find(e => e.event === 'taken over')?.line], [true, 'kept', `Built into the folder there, ${prepared}; what it holds kept: avro.`], 'its repository there, what the folder held kept, said in its log')
+    await teardown(exec, { uri: ['main', 'prepared'] }); await commit()
+    mkdirSync(join(work, 'mrepos', 'local', 'other', '.git'), { recursive: true })
+    await t.exception(deploy(exec, { uri: ['main', 'other'], args: ['haiccing/target'], flags: { force: true } }), /in the way: .*local\/other \(an mrepo there already, linked nowhere here\)/, 'a folder that holds an mrepo: refused all the same')
+    rmSync(join(work, 'mrepos', 'local', 'other'), { recursive: true, force: true })
     // linked first, undone on a failure: nothing of it left, its link out again
     await t.exception(deploy(exec, { uri: ['main', 'x'], args: ['haiccing/none'] }), /not in the store nor the sources/)
     await commit()
