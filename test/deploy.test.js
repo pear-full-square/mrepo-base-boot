@@ -209,10 +209,10 @@ test('deploy from a target package\'s list, linked first, placed by its unique U
     await commit()
     await t.exception(deploy(exec, { uri: ['main', 'swarms/local/peer-1'], args: ['haiccing/target'] }), /not a swarm: local/, 'local is the swarm of what is in none')
     // a position whose node above says nothing: in its parent's swarm
-    const p = await deploy(exec, { uri: ['main', 'plain/node-0'], args: ['haiccing/target'] })
+    const p = await deploy(exec, { uri: ['main', 'plain/peer-0'], args: ['haiccing/target'] })
     await commit()
-    t.is(p.split('\n')[0], 'Deployed plain/node-0 as local/node-0, from haiccing/target.', 'deeper, no swarm above it: in its parent\'s swarm, local')
-    t.ok((await teardown(exec, { uri: ['main', 'plain/node-0'] })).startsWith('Torn down plain/node-0 (local/node-0):'))
+    t.is(p.split('\n')[0], 'Deployed plain/peer-0 as local/peer-0, from haiccing/target.', 'deeper, no swarm above it: in its parent\'s swarm, local')
+    t.ok((await teardown(exec, { uri: ['main', 'plain/peer-0'] })).startsWith('Torn down plain/peer-0 (local/peer-0):'))
     await commit()
     // a swarm's peer: the nearest node above it whose document says it is a swarm names the swarm
     exec.put('/main/swarms/swarm-1/.node.json', Buffer.from('{"kind":"swarm"}\n'))
