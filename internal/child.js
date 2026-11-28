@@ -26,13 +26,13 @@
 //             main replicates, this does not
 //   mrepo     its unique URI, a path: from the nearest namespace node
 //             above it down to it. A swarm names its namespace by its own
-//             name (swarms/swarm-1 a swarm: swarms/swarm-1/node-1 is
-//             swarm-1/node-1); a howtos node is the root of one, the path
+//             name (swarms/swarm-1 a swarm: swarms/swarm-1/peer-1 is
+//             swarm-1/peer-1); a howtos node is the root of one, the path
 //             below it the URI (howtos a howtos node:
 //             howtos/haiccing/base-package-crud/howto/query/boot is
 //             haiccing/base-package-crud/howto/query/boot). In the
 //             namespace this mrepo is in itself, when that is not local
-//             (a how-to's host deploying a swarm: its swarm's nodes in
+//             (a how-to's host deploying a swarm: its swarm's peers in
 //             its namespace). None above it: in its parent's namespace
 //             (local/host). Two segments at least, the first never local
 //   recorded  its link and what is local, as one record; null: not deployed

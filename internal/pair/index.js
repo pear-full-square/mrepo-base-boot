@@ -41,10 +41,10 @@ export function pairOf (exec, c) {
   if (!work) throw new Error('no work folder in the context: a pair is made beside the mrepos')
   const dir = join(work, PAIRS, c.mrepo)
   const boot = join(dir, BOOT)
-  const node = join(dir, 'work', 'mrepos', c.mrepo)
+  const peer = join(dir, 'work', 'mrepos', c.mrepo)
   const name = `haicc-pair-${c.mrepo.replace(/\//g, '-')}-${crypto.createHash('sha256').update(dir).digest('hex').slice(0, 8)}`
   const mine = exec.runtime.dir
-  return { dir, boot, node, name, folder: relative(mine, node), platform: relative(mine, boot), home: dirname(work) }
+  return { dir, boot, peer, name, folder: relative(mine, peer), platform: relative(mine, boot), home: dirname(work) }
 }
 
 // One platform command for the container's: dropped into its boot

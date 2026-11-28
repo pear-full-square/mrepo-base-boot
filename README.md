@@ -43,7 +43,7 @@ A child is placed by its unique URI, side by side with the others under
 the work folder's `mrepos/` (`mrepos/local/host`), not inside its parent.
 Its unique URI is a path: in its parent's namespace (`local`), unless a
 node above it says it is a namespace: a swarm, `{"kind":"swarm"}`, then
-it is that swarm's node, `<swarm>/<name>` (`mrepos/swarm-1/node-1`); a
+it is that swarm's peer, `<swarm>/<name>` (`mrepos/swarm-1/peer-1`); a
 `howtos` node, `{"kind":"howtos"}`, then the path below it is its URI
 (`howtos/haiccing/base-package-crud/howto/query/boot`:
 `mrepos/haiccing/base-package-crud/howto/query/boot`). No unique URI is a

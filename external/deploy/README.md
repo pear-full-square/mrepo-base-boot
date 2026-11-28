@@ -37,7 +37,7 @@ package: refused (`boot/redeploy` changes it).
 `deploy(exec, { uri, args })`: requested as `boot/deploy <name>
 <package>`. `uri` is the child's position as the form holds it,
 `["main", "<position>"]`: any position below `main`, `host` or
-`swarms/swarm-1/node-1`; the node above it there already (`crud/create`).
+`swarms/swarm-1/peer-1`; the node above it there already (`crud/create`).
 
 ## Arguments
 
@@ -147,14 +147,14 @@ nothing of it inside this mrepo's folder.
 - The child's unique URI is a path, from the nearest node above it
   whose document says it is a namespace down to it. A swarm,
   `{"kind":"swarm"}`, names its namespace by its own name
-  (`swarms/swarm-1`, a swarm: `swarms/swarm-1/node-1` is
-  `swarm-1/node-1`); a `howtos` node, `{"kind":"howtos"}`, is the root
+  (`swarms/swarm-1`, a swarm: `swarms/swarm-1/peer-1` is
+  `swarm-1/peer-1`); a `howtos` node, `{"kind":"howtos"}`, is the root
   of one, the path below it the URI (`howtos`, one:
   `howtos/haiccing/base-package-crud/howto/query/boot` is
   `haiccing/base-package-crud/howto/query/boot`, a how-to's unique key
   and its mrepo's name). In the namespace of the mrepo that deploys it,
   when that is not `local` (a how-to's host deploying a swarm: its
-  nodes in the how-to's namespace). None above it: in its parent's
+  peers in the how-to's namespace). None above it: in its parent's
   namespace: what the boot mrepo deploys is `local/<name>`, what a
   how-to's boot deploys beside it. A position's meaning is its
   documents', not the protocol's. It is written into the child's own

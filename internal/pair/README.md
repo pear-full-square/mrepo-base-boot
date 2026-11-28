@@ -30,12 +30,12 @@ inside it).
 
 ## Not yet
 
-- **The node brought back on a restart**: started again, the container
-  boots its install again; whether its boot starts the node's runtime
+- **The peer brought back on a restart**: started again, the container
+  boots its install again; whether its boot starts the peer's runtime
   again is to be checked.
 - **The shared folder narrowed**: today the container's whole haicc home
   is shared (a prototype's simplest); settled for later, only the
-  container's boot mrepo and the node shared, every mrepo the node
+  container's boot mrepo and the peer shared, every mrepo the peer
   deploys in the container only.
-- **Replication** of a node's commits, for a node on another machine, where
+- **Replication** of a peer's commits, for a peer on another machine, where
   no folder is shared: one Hypercore per direction.
