@@ -25,7 +25,7 @@ extraction reads the store.
 ## Errors
 
 - The target, or a package it lists, is in neither the store nor the
-  sources, or is not as its manifest says.
+  sources.
 - The target lists no packages.
 - Its list documents anything but `store`: `documents what?`.
 

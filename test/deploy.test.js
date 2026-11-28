@@ -13,7 +13,7 @@ import { asked, drop, nameOf, layer, outboxOf } from 'mrepo-base-request'
 import { ask } from 'mrepo-base-runtime'
 import { spawn, spawnSync } from 'bare-subprocess'
 import process from 'bare-process'
-import { build, deploy, teardown, redeploy, place, parseSource, lay } from '../index.js'
+import { build, deploy, teardown, redeploy, place, parseSource, lay, fetch } from '../index.js'
 
 const lj = (dir, mode) => { mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, '.layer.json'), JSON.stringify({ mode, description: 'test' })) }
 const sha256 = b => crypto.createHash('sha256').update(b).digest('hex')
@@ -83,6 +83,24 @@ function context (dir, backend, work) {
   }
   return { exec, commit, repo }
 }
+
+test('the sources: local folders only, trusted as given: github refused; a bundle copied as it is; the folders recorded', async (t) => {
+  t.alike(parseSource('folder:/x'), { kind: 'folder', path: '/x' }, 'a folder')
+  t.exception(() => parseSource('github:haiccing'), /not a source: github:haiccing \(folder:<path> only\)/, 'github: refused, said')
+  const pkgs = mkdtempSync(join(tmpdir(), 'fetch-src-'))
+  const work = mkdtempSync(join(tmpdir(), 'fetch-work-'))
+  try {
+    source(pkgs, { 'haiccing/base': { 'runtime/.layer.json': { mode: 'atomic' } } })
+    const mf = join(pkgs, 'haiccing', 'manifest.json')
+    const m = JSON.parse(readFileSync(mf, 'utf8')); m.packages['haiccing/base'].sha256 = '0'.repeat(64); writeFileSync(mf, JSON.stringify(m))
+    const store = join(work, 'packages')
+    fetch({ store, sources: [parseSource(`folder:${pkgs}`)], pkg: 'haiccing/base' })
+    t.ok(existsSync(join(store, 'haiccing', 'base.bundle')), 'a bundle not as its manifest says: copied, nothing checked')
+    const dir = await parent(work, [parseSource(`folder:${pkgs}`)])
+    const r = openRepo(p2pgitBackend(join(dir, '.git'), { fs }))
+    t.alike(json(await r.find('/packages/manifest.json')).sources, [`folder:${pkgs}`], 'the manifest records the folders')
+  } finally { for (const d of [pkgs, work]) rmSync(d, { recursive: true, force: true }) }
+})
 
 test('documents: store: the list laid in and placed, nothing more: its info extraction reads the store; documents anything else refused', async (t) => {
   const pkgs = mkdtempSync(join(tmpdir(), 'documents-src-'))
@@ -201,34 +219,34 @@ test('deploy from a target package\'s list, linked first, placed by its unique U
     await commit()
     await t.exception(deploy(exec, { uri: ['main', 'linked/deeper'], args: ['haiccing/target'] }), /linked is a shortcut: a URI does not run through it/, 'below a shortcut: another mrepo\'s')
     // deeper below main: the node above it there first
-    await t.exception(deploy(exec, { uri: ['main', 'swarms/swarm-1/node-1'], args: ['haiccing/target'] }), /no node there: swarms\/swarm-1 \(crud\/create swarms\/swarm-1\)/, 'the node above it is there first')
+    await t.exception(deploy(exec, { uri: ['main', 'swarms/swarm-1/peer-1'], args: ['haiccing/target'] }), /no node there: swarms\/swarm-1 \(crud\/create swarms\/swarm-1\)/, 'the node above it is there first')
     t.absent(existsSync(join(work, 'mrepos', 'swarm-1')), 'nothing built')
     exec.put('/main/swarms/.node.json', Buffer.from('{}\n'))
     exec.put('/main/swarms/local/.node.json', Buffer.from('{"kind":"swarm"}\n'))
     exec.put('/main/plain/.node.json', Buffer.from('{}\n'))
     await commit()
-    await t.exception(deploy(exec, { uri: ['main', 'swarms/local/node-1'], args: ['haiccing/target'] }), /not a swarm: local/, 'local is the swarm of what is in none')
+    await t.exception(deploy(exec, { uri: ['main', 'swarms/local/peer-1'], args: ['haiccing/target'] }), /not a swarm: local/, 'local is the swarm of what is in none')
     // a position whose node above says nothing: in its parent's swarm
-    const p = await deploy(exec, { uri: ['main', 'plain/node-0'], args: ['haiccing/target'] })
+    const p = await deploy(exec, { uri: ['main', 'plain/peer-0'], args: ['haiccing/target'] })
     await commit()
-    t.is(p.split('\n')[0], 'Deployed plain/node-0 as local/node-0, from haiccing/target.', 'deeper, no swarm above it: in its parent\'s swarm, local')
-    t.ok((await teardown(exec, { uri: ['main', 'plain/node-0'] })).startsWith('Torn down plain/node-0 (local/node-0):'))
+    t.is(p.split('\n')[0], 'Deployed plain/peer-0 as local/peer-0, from haiccing/target.', 'deeper, no swarm above it: in its parent\'s swarm, local')
+    t.ok((await teardown(exec, { uri: ['main', 'plain/peer-0'] })).startsWith('Torn down plain/peer-0 (local/peer-0):'))
     await commit()
-    // a swarm's node: the nearest node above it whose document says it is a swarm names the swarm
+    // a swarm's peer: the nearest node above it whose document says it is a swarm names the swarm
     exec.put('/main/swarms/swarm-1/.node.json', Buffer.from('{"kind":"swarm"}\n'))
     await commit()
-    const n = await deploy(exec, { uri: ['main', 'swarms/swarm-1/node-1'], args: ['haiccing/target'] })
+    const n = await deploy(exec, { uri: ['main', 'swarms/swarm-1/peer-1'], args: ['haiccing/target'] })
     await commit()
-    t.is(n.split('\n')[0], 'Deployed swarms/swarm-1/node-1 as swarm-1/node-1, from haiccing/target.', 'deployed at swarms/<swarm>/<name>: its unique URI <swarm>/<name>, the swarm its position names')
-    t.ok(existsSync(join(work, 'mrepos', 'swarm-1', 'node-1', '.git')), 'placed by it: <work>/mrepos/swarm-1/node-1')
-    t.alike(json(await openRepo(p2pgitBackend(join(work, 'mrepos', 'swarm-1', 'node-1', '.git'), { fs })).read('/runtime/mrepo.json')), { uri: 'swarm-1/node-1' }, 'its identity')
-    const [ns] = json(await repo.read('/main/swarms/swarm-1/node-1/.shortcuts.json'))
+    t.is(n.split('\n')[0], 'Deployed swarms/swarm-1/peer-1 as swarm-1/peer-1, from haiccing/target.', 'deployed at swarms/<swarm>/<name>: its unique URI <swarm>/<name>, the swarm its position names')
+    t.ok(existsSync(join(work, 'mrepos', 'swarm-1', 'peer-1', '.git')), 'placed by it: <work>/mrepos/swarm-1/peer-1')
+    t.alike(json(await openRepo(p2pgitBackend(join(work, 'mrepos', 'swarm-1', 'peer-1', '.git'), { fs })).read('/runtime/mrepo.json')), { uri: 'swarm-1/peer-1' }, 'its identity')
+    const [ns] = json(await repo.read('/main/swarms/swarm-1/peer-1/.shortcuts.json'))
     const nl = json(await repo.read(`/links/${ns.link}.json`))
-    t.alike([ns.mrepo, nl.uri, nl.at, nl.folder], ['swarm-1/node-1', 'swarm-1/node-1', 'swarms/swarm-1/node-1', '../swarm-1/node-1'], 'its shortcut at that position, its link\'s record: the position, where it is')
-    t.ok((await deploy(exec, { uri: ['main', 'swarms/swarm-1/node-1'], args: ['haiccing/target'] })).endsWith('nothing done.'), 'again: deployed already')
-    t.ok((await teardown(exec, { uri: ['main', 'swarms/swarm-1/node-1'] })).startsWith('Torn down swarms/swarm-1/node-1 (swarm-1/node-1):'), 'torn down at its position')
+    t.alike([ns.mrepo, nl.uri, nl.at, nl.folder], ['swarm-1/peer-1', 'swarm-1/peer-1', 'swarms/swarm-1/peer-1', '../swarm-1/peer-1'], 'its shortcut at that position, its link\'s record: the position, where it is')
+    t.ok((await deploy(exec, { uri: ['main', 'swarms/swarm-1/peer-1'], args: ['haiccing/target'] })).endsWith('nothing done.'), 'again: deployed already')
+    t.ok((await teardown(exec, { uri: ['main', 'swarms/swarm-1/peer-1'] })).startsWith('Torn down swarms/swarm-1/peer-1 (swarm-1/peer-1):'), 'torn down at its position')
     await commit()
-    t.alike([existsSync(join(work, 'mrepos', 'swarm-1', 'node-1')), await repo.find('/main/swarms/swarm-1/node-1/.node.json'), json(await repo.read('/main/swarms/swarm-1/.node.json'))], [false, null, { kind: 'swarm' }], 'gone, its swarm\'s node left')
+    t.alike([existsSync(join(work, 'mrepos', 'swarm-1', 'peer-1')), await repo.find('/main/swarms/swarm-1/peer-1/.node.json'), json(await repo.read('/main/swarms/swarm-1/.node.json'))], [false, null, { kind: 'swarm' }], 'gone, its swarm\'s node left')
     // a howtos node: the root of a namespace, the path below it the unique URI
     exec.put('/main/howtos/.node.json', Buffer.from('{"kind":"howtos"}\n'))
     for (const p of ['haiccing', 'haiccing/base-package-crud', 'haiccing/base-package-crud/howto', 'haiccing/base-package-crud/howto/query']) exec.put(`/main/howtos/${p}/.node.json`, Buffer.from('{}\n'))
@@ -264,11 +282,11 @@ test('deploy from a target package\'s list, linked first, placed by its unique U
     const inner = { ...exec, runtime: { ...exec.runtime, uri: HOWTO + '/host' } }
     exec.put('/main/swarms/swarm-2/.node.json', Buffer.from('{"kind":"swarm"}\n'))
     await commit()
-    const s2 = await deploy(inner, { uri: ['main', 'swarms/swarm-2/node-1'], args: ['haiccing/target'] })
+    const s2 = await deploy(inner, { uri: ['main', 'swarms/swarm-2/peer-1'], args: ['haiccing/target'] })
     await commit()
-    t.is(s2.split('\n')[0], `Deployed swarms/swarm-2/node-1 as ${HOWTO}/swarm-2/node-1, from haiccing/target.`, 'deployed by an mrepo in a namespace: its swarm\'s nodes in that namespace')
-    t.ok(existsSync(join(work, 'mrepos', ...HOWTO.split('/'), 'swarm-2', 'node-1', '.git')), 'placed by it')
-    await teardown(inner, { uri: ['main', 'swarms/swarm-2/node-1'] })
+    t.is(s2.split('\n')[0], `Deployed swarms/swarm-2/peer-1 as ${HOWTO}/swarm-2/peer-1, from haiccing/target.`, 'deployed by an mrepo in a namespace: its swarm\'s nodes in that namespace')
+    t.ok(existsSync(join(work, 'mrepos', ...HOWTO.split('/'), 'swarm-2', 'peer-1', '.git')), 'placed by it')
+    await teardown(inner, { uri: ['main', 'swarms/swarm-2/peer-1'] })
     await commit()
     await t.exception(deploy(exec, { uri: 'main/host', args: ['haiccing/target'] }), /not a URI: its segments, an array/, 'a URI as one string: not a form\'s')
   } finally {

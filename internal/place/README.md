@@ -18,7 +18,7 @@ returns them; `list` the packages, `<org>/<package>`.
 
 ## Errors
 
-Those of `fetch`; a schema a package carries that is not valid AVRO.
+Those of `fetch`.
 
 ## Also exported
 

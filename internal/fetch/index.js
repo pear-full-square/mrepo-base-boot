@@ -1,16 +1,12 @@
-// fetch: a package into the store, checked; also available, structureOf, put, parseSource (README.md beside it).
+// fetch: a package into the store from the sources, trusted as given; also available, structureOf, put, parseSource (README.md beside it).
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync, linkSync, copyFileSync } from 'bare-fs'
 import { join, dirname } from 'bare-path'
-import crypto from 'bare-crypto'
 import Bundle from 'bare-bundle'
-
-const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex')
 
 // A package from the sources, in order: its manifest entry and its folder.
 function find (sources, pkg) {
   const [org] = pkg.split('/')
   for (const s of sources) {
-    if (s.kind !== 'folder') continue
     const mf = join(s.path, org, 'manifest.json')
     if (!existsSync(mf)) continue
     const entry = JSON.parse(readFileSync(mf, 'utf8')).packages?.[pkg]
@@ -20,11 +16,11 @@ function find (sources, pkg) {
 }
 
 // Every package the sources offer, each once, the first source's first:
-// the packages in each folder source's <org>/manifest.json, sorted.
+// the packages in each source's <org>/manifest.json, sorted.
 export function available (sources) {
   const out = new Set()
   for (const s of sources) {
-    if (s.kind !== 'folder' || !existsSync(s.path)) continue
+    if (!existsSync(s.path)) continue
     for (const org of readdirSync(s.path).sort()) {
       const mf = join(s.path, org, 'manifest.json')
       if (!existsSync(mf)) continue
@@ -40,11 +36,10 @@ export function fetch ({ store, sources, pkg }) {
   if (existsSync(file) && existsSync(known)) return JSON.parse(readFileSync(known, 'utf8'))
   const found = find(sources, pkg)
   if (!found) throw new Error(`not in the store nor the sources: ${pkg}`)
+  // the sources trusted as given: checked before the boot, not here
   const { entry } = found
-  if (sha256(readFileSync(join(found.source, entry.file))) !== entry.sha256) throw new Error(`not as its manifest says (sha256): ${pkg}`)
   for (const a of entry.addons) {
     if (existsSync(join(store, 'addons', a))) continue
-    if (sha256(readFileSync(join(found.source, 'addons', a))) !== a) throw new Error(`an addon not as named (sha256): ${a}`)
     put(join(found.source, 'addons', a), join(store, 'addons', a))
   }
   put(join(found.source, entry.file), file)
@@ -98,6 +93,5 @@ export function parseSource (s) {
   const kind = i < 0 ? s : s.slice(0, i)
   const at = i < 0 ? '' : s.slice(i + 1)
   if (kind === 'folder') return { kind, path: at }
-  if (kind === 'github') return { kind, org: at || 'haiccing' }
-  throw new Error(`not a source: ${s} (folder:<path>, github:<org>)`)
+  throw new Error(`not a source: ${s} (folder:<path> only)`)
 }
