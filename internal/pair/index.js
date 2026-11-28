@@ -79,7 +79,7 @@ export async function deployPair (exec, c, { target, sources }) {
   const p = pairOf(exec, c)
   if (existsSync(p.dir)) throw new Error(`in the way: ${p.dir}`)
   for (const f of ['bin', 'pins']) if (!existsSync(join(p.home, f))) throw new Error(`no haicc install beside the work folder: ${join(p.home, f)}`)
-  const folders = sources.filter(s => s.kind === 'folder').map(s => s.path)
+  const folders = sources.map(s => s.path)
   let made = false
   try {
     mkdirSync(p.dir, { recursive: true })

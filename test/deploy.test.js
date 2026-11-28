@@ -13,7 +13,7 @@ import { asked, drop, nameOf, layer, outboxOf } from 'mrepo-base-request'
 import { ask } from 'mrepo-base-runtime'
 import { spawn, spawnSync } from 'bare-subprocess'
 import process from 'bare-process'
-import { build, deploy, teardown, redeploy, place, parseSource, lay } from '../index.js'
+import { build, deploy, teardown, redeploy, place, parseSource, lay, fetch } from '../index.js'
 
 const lj = (dir, mode) => { mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, '.layer.json'), JSON.stringify({ mode, description: 'test' })) }
 const sha256 = b => crypto.createHash('sha256').update(b).digest('hex')
@@ -83,6 +83,24 @@ function context (dir, backend, work) {
   }
   return { exec, commit, repo }
 }
+
+test('the sources: local folders only, trusted as given: github refused; a bundle copied as it is; the folders recorded', async (t) => {
+  t.alike(parseSource('folder:/x'), { kind: 'folder', path: '/x' }, 'a folder')
+  t.exception(() => parseSource('github:haiccing'), /not a source: github:haiccing \(folder:<path> only\)/, 'github: refused, said')
+  const pkgs = mkdtempSync(join(tmpdir(), 'fetch-src-'))
+  const work = mkdtempSync(join(tmpdir(), 'fetch-work-'))
+  try {
+    source(pkgs, { 'haiccing/base': { 'runtime/.layer.json': { mode: 'atomic' } } })
+    const mf = join(pkgs, 'haiccing', 'manifest.json')
+    const m = JSON.parse(readFileSync(mf, 'utf8')); m.packages['haiccing/base'].sha256 = '0'.repeat(64); writeFileSync(mf, JSON.stringify(m))
+    const store = join(work, 'packages')
+    fetch({ store, sources: [parseSource(`folder:${pkgs}`)], pkg: 'haiccing/base' })
+    t.ok(existsSync(join(store, 'haiccing', 'base.bundle')), 'a bundle not as its manifest says: copied, nothing checked')
+    const dir = await parent(work, [parseSource(`folder:${pkgs}`)])
+    const r = openRepo(p2pgitBackend(join(dir, '.git'), { fs }))
+    t.alike(json(await r.find('/packages/manifest.json')).sources, [`folder:${pkgs}`], 'the manifest records the folders')
+  } finally { for (const d of [pkgs, work]) rmSync(d, { recursive: true, force: true }) }
+})
 
 test('documents: store: the list laid in and placed, nothing more: its info extraction reads the store; documents anything else refused', async (t) => {
   const pkgs = mkdtempSync(join(tmpdir(), 'documents-src-'))

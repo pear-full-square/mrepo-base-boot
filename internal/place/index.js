@@ -21,7 +21,7 @@ export async function place ({ dir, store, sources, list }) {
   // The packages layer: the list and the hashes (not the bytes), the sources
   // used and the store (unchanged: no commit).
   const backend = p2pgitBackend(join(dir, '.git'), { fs })
-  const from = sources.map(x => x.kind === 'folder' ? `folder:${x.path}` : `github:${x.org}`)
+  const from = sources.map(x => `folder:${x.path}`)
   const now = Buffer.from(JSON.stringify({ packages, sources: from, store }, null, 2) + '\n')
   const was = await openRepo(backend).find('/packages/manifest.json')
   const committed = !was || !was.equals(now)
